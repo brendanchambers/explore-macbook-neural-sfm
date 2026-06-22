@@ -6,7 +6,6 @@ from mlx_mast3r import Mast3rFull
 img1 = np.array(Image.open("data/incoming/images/frame_0001.jpg"))
 img2 = np.array(Image.open("data/incoming/images/frame_0002.jpg"))
 
-
 # Load full MASt3R pipeline
 model = Mast3rFull.from_pretrained(resolution=512)
 
