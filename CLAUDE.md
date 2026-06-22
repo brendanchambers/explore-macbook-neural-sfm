@@ -1,7 +1,8 @@
 
 ## Project info
 We will be extracting dense features from video frames.
-The language will be python, with env managed with uv.
+The language will be python
+The environment will be managed using uv (launch python scripts as `uv run python ...`)
 The development and compute will happen on this macbook air M4 24GB laptop.
 Configuration will be managed with hydra + omegaconf, and their logs will be written at `logs/hydra`.
 Never change validation approaches without discussing it first and receiving a greenlight.
