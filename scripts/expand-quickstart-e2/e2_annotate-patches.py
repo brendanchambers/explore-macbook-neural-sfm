@@ -3,11 +3,18 @@ from PIL import Image, ImageDraw
 import numpy as np
 import os
 
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+image_path = "data/incoming/images/frame_0001.jpg"
+output_dir = "data/intermediates/feature_extraction"
+
+# ============================================================================
+
 # Load encoder
 encoder = DUNE.from_pretrained("base", resolution=336)
 
 # Load image
-image_path = "data/incoming/images/frame_0001.jpg"
 image = np.array(Image.open(image_path))
 original_image = Image.open(image_path)
 
@@ -60,7 +67,6 @@ for idx in range(num_features):
 annotated_image = Image.alpha_composite(annotated_image, overlay).convert("RGB")
 
 # Save annotated image
-output_dir = "data/intermediates/feature_extraction"
 os.makedirs(output_dir, exist_ok=True)
 output_path = os.path.join(output_dir, "frame_0001_features.jpg")
 annotated_image.save(output_path, quality=95)
