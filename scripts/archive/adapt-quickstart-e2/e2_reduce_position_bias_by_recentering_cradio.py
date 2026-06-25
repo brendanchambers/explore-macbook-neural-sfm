@@ -1,29 +1,26 @@
-from mlx_mast3r import DUNE
+from transformers import AutoModel, AutoImageProcessor
 from PIL import Image, ImageDraw
 import numpy as np
 import os
 from tqdm import tqdm
 import time
+import torch
 
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-RESTRICT_TO_LOWER_HALF = False  # Toggle to restrict matching to lower half of images
-K = 25  # Number of top matches to find
+RESTRICT_TO_LOWER_HALF = True  # Toggle to restrict matching to lower half of images
+K = 10  # Number of top matches to find
 
 image_dir_for_position_debiasing = "data/incoming/images"  # Directory to load images from for feature preprocessing
-P_sample_image = 1.0  # Probability (10%) to encode features for each image for faster iteration
+P_sample_image = 0.1  # Probability (10%) to encode features for each image for faster iteration
 
 image1_path = "data/incoming/images/frame_0067.jpg"
 image2_path = "data/incoming/images/frame_0075.jpg"
 
-# D_slice = 768 - 192  # keep dimensions later than
-D_slice = 192
-
 # Output directory for all generated files
-output_dir = "data/intermediates/patch_matching/slicing"
+output_dir = "data/intermediates/patch_matching/recentered_cradio"
 
-np.show_config()
 # ============================================================================
 
 # Timing tracking
@@ -44,23 +41,98 @@ def log_step(step_name):
     return decorator
 
 # ============================================================================
-# STEP 1: Load encoder
+# STEP 1: Load encoder and processor
 # ============================================================================
-@log_step("1. Load encoder")
+@log_step("1. Load C-RADIOv4-H model and processor")
 def load_encoder():
-    return DUNE.from_pretrained("base", resolution=336)
+    model = AutoModel.from_pretrained("nvidia/C-RADIOv4-H", trust_remote_code=True)
+    processor = AutoImageProcessor.from_pretrained("nvidia/C-RADIOv4-H", trust_remote_code=True)
+    model.eval()
+    return model, processor
 
-encoder = load_encoder()
+model, processor = load_encoder()
 
 # ============================================================================
-# STEP 4: Load images
+# STEP 2: Feature preprocessing - compute mean patch features
+# ============================================================================
+@log_step("2. Feature preprocessing - load images and compute mean patch features")
+def compute_mean_patch_features():
+    """
+    Load randomly sampled images from the directory, encode their features,
+    and compute the mean patch features across all sampled images.
+    """
+    # Get list of images from directory
+    image_files = sorted([f for f in os.listdir(image_dir_for_position_debiasing)
+                         if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+    print(f"  Found {len(image_files)} images in {image_dir_for_position_debiasing}")
+
+    if len(image_files) == 0:
+        print("  ⚠ WARNING: No images found in directory, skipping preprocessing")
+        return None
+
+    # Load and encode features for sampled images (with probability P_sample_image)
+    print(f"  Loading and encoding features for sampled images (P_sample_image={P_sample_image})...")
+    sampled_features_list = []
+    np.random.seed(42)  # For reproducibility
+    for img_file in tqdm(image_files, desc="  Encoding images"):
+        # Sample with probability P_sample_image
+        if np.random.random() >= P_sample_image:
+            continue
+
+        img_path = os.path.join(image_dir_for_position_debiasing, img_file)
+        try:
+            img_pil = Image.open(img_path)
+
+            # Get nearest supported resolution
+            nearest_res = model.get_nearest_supported_resolution(img_pil.size[1], img_pil.size[0])
+            img_resized = img_pil.resize((nearest_res.width, nearest_res.height), Image.Resampling.LANCZOS)
+
+            # Process and extract features
+            inputs = processor(images=img_resized, return_tensors="pt")
+            with torch.no_grad():
+                outputs = model(inputs['pixel_values'])
+
+            features = outputs.features.squeeze(0).cpu().numpy().astype(np.float32)  # [N_patches, D_patch]
+            sampled_features_list.append(features)
+            print(f"    {img_file}: features shape {features.shape}")
+        except Exception as e:
+            print(f"    ⚠ Failed to load {img_file}: {e}")
+
+    if len(sampled_features_list) == 0:
+        print("  ⚠ WARNING: No images were sampled/loaded, skipping preprocessing")
+        return None
+
+    print(f"  Successfully encoded {len(sampled_features_list)}/{len(image_files)} sampled images")
+
+    # Compute mean patch features across all sampled images
+    print(f"  Computing mean patch features across {len(sampled_features_list)} sampled images...")
+
+    # Concatenate all patches from all images and compute mean
+    all_features = np.concatenate(sampled_features_list, axis=0)  # Concatenate all patches from all images
+    mean_patch_features = np.mean(all_features, axis=0, keepdims=False)  # [D_patch]
+
+    print(f"  Mean patch features shape: {mean_patch_features.shape}")
+    print(f"    Mean: {np.mean(mean_patch_features):.6f}")
+    print(f"    Std: {np.std(mean_patch_features):.6f}")
+    print(f"    Min: {np.min(mean_patch_features):.6f}")
+    print(f"    Max: {np.max(mean_patch_features):.6f}")
+
+    return mean_patch_features
+
+mean_patch_features = compute_mean_patch_features()
+
+# Initialize avg_position_debiasing_map to None (legacy, kept for histogram/scatter plots)
+avg_position_debiasing_map = None
+
+# ============================================================================
+# STEP 3: Load images
 # ============================================================================
 @log_step("3. Load images")
 def load_images():
-    image1_array = np.array(Image.open(image1_path))
-    image2_array = np.array(Image.open(image2_path))
     image1_pil = Image.open(image1_path)
     image2_pil = Image.open(image2_path)
+    image1_array = np.array(image1_pil)
+    image2_array = np.array(image2_pil)
     print(f"  Image 1 shape: {image1_array.shape}")
     print(f"  Image 2 shape: {image2_array.shape}")
     return image1_array, image2_array, image1_pil, image2_pil
@@ -68,46 +140,67 @@ def load_images():
 image1_array, image2_array, image1_pil, image2_pil = load_images()
 
 # ============================================================================
+# STEP 4: Store resized images for coordinate mapping
+# ============================================================================
+# Get nearest supported resolutions
+nearest_res1 = model.get_nearest_supported_resolution(image1_pil.size[1], image1_pil.size[0])
+image1_resized_pil = image1_pil.resize((nearest_res1.width, nearest_res1.height), Image.Resampling.LANCZOS)
+
+nearest_res2 = model.get_nearest_supported_resolution(image2_pil.size[1], image2_pil.size[0])
+image2_resized_pil = image2_pil.resize((nearest_res2.width, nearest_res2.height), Image.Resampling.LANCZOS)
+
+# ============================================================================
 # STEP 5: Extract features and subtract mean patch features
 # ============================================================================
 @log_step("4. Extract features from both images (subtract mean patch features)")
 def extract_features():
     print("  Encoding Image 1...")
-    features1 = encoder.encode(image1_array[:, :D_slice]).astype(np.float32)  # [N1, 768]
+
+    inputs1 = processor(images=image1_resized_pil, return_tensors="pt")
+    with torch.no_grad():
+        outputs1 = model(inputs1['pixel_values'])
+
+    features1 = outputs1.features.squeeze(0).cpu().numpy().astype(np.float32)  # [N1, D_patch]
     print(f"    Features shape: {features1.shape}")
 
+    # Subtract mean patch features if available
+    if mean_patch_features is not None:
+        print(f"    Subtracting mean patch features...")
+        features1 = features1 - mean_patch_features
+        print(f"    After centering - Mean: {np.mean(features1):.6f}, Std: {np.std(features1):.6f}")
+
     print("  Encoding Image 2...")
-    features2 = encoder.encode(image2_array[:, D_slice:]).astype(np.float32)  # [N2, 768]
+
+    inputs2 = processor(images=image2_resized_pil, return_tensors="pt")
+    with torch.no_grad():
+        outputs2 = model(inputs2['pixel_values'])
+
+    features2 = outputs2.features.squeeze(0).cpu().numpy().astype(np.float32)  # [N2, D_patch]
     print(f"    Features shape: {features2.shape}")
+
+    # Subtract mean patch features if available
+    if mean_patch_features is not None:
+        print(f"    Subtracting mean patch features...")
+        features2 = features2 - mean_patch_features
+        print(f"    After centering - Mean: {np.mean(features2):.6f}, Std: {np.std(features2):.6f}")
 
     return features1, features2
 
 features1, features2 = extract_features()
 
 # ============================================================================
-# STEP 6: Normalize features
+# STEP 6: Compute similarity matrix
 # ============================================================================
-@log_step("5. Normalize features for cosine similarity")
-def normalize_features():
-    f1 = features1 / (np.linalg.norm(features1, axis=1, keepdims=True) + 1e-8)
-    f2 = features2 / (np.linalg.norm(features2, axis=1, keepdims=True) + 1e-8)
-    return f1, f2
-
-features1_normalized, features2_normalized = normalize_features()
-
-# ============================================================================
-# STEP 7: Compute similarity matrix
-# ============================================================================
-@log_step("6. Compute cosine similarity matrix")
+@log_step("5. Compute outer product matrix")
 def compute_similarity():
-    matrix = features1_normalized @ features2_normalized.T  # [N1, N2]
+    matrix = features1 @ features2.T  # [N1, N2]
     print(f"  Similarity matrix shape: {matrix.shape}")
     return matrix
 
 similarity_matrix = compute_similarity()
 
 # ============================================================================
-# STEP 6: Create patch coordinate system
+# STEP 7: Create patch coordinate system
 # ============================================================================
 
 # Helper function to get patch coordinates
@@ -116,7 +209,7 @@ def get_patch_coordinates(image_pil, num_features, encoder_resolution=336):
     h, w = image_pil.size[::-1]  # Get height and width (H, W)
 
     # Estimate grid dimensions based on typical encoder output
-    stride = 8  # Common stride for vision transformers
+    stride = 16  # C-RADIO uses 16-pixel stride typically
     grid_h = h // stride
     grid_w = w // stride
 
@@ -152,19 +245,19 @@ def is_in_lower_half(patch_idx, get_coords_fn, image_pil):
 # ============================================================================
 # STEP 8: Find top K matches
 # ============================================================================
-@log_step("7. Create patch coordinate system and find top K matches")
+@log_step("6. Create patch coordinate system and find top K matches")
 def find_matches():
-    get_coords1 = get_patch_coordinates(image1_pil, features1.shape[0])
-    get_coords2 = get_patch_coordinates(image2_pil, features2.shape[0])
+    get_coords1 = get_patch_coordinates(image1_resized_pil, features1.shape[0])
+    get_coords2 = get_patch_coordinates(image2_resized_pil, features2.shape[0])
 
     if RESTRICT_TO_LOWER_HALF:
         print("  Applying lower-half restriction...")
         valid_mask = np.zeros_like(similarity_matrix, dtype=bool)
 
         for i in range(similarity_matrix.shape[0]):
-            if is_in_lower_half(i, get_coords1, image1_pil):
+            if is_in_lower_half(i, get_coords1, image1_resized_pil):
                 for j in range(similarity_matrix.shape[1]):
-                    if is_in_lower_half(j, get_coords2, image2_pil):
+                    if is_in_lower_half(j, get_coords2, image2_resized_pil):
                         valid_mask[i, j] = True
 
         masked_similarity = similarity_matrix.copy()
@@ -208,16 +301,16 @@ matches, get_coords1, get_coords2 = find_matches()
 # ============================================================================
 # STEP 9: Create visualization
 # ============================================================================
-@log_step("8. Create side-by-side visualization")
+@log_step("7. Create side-by-side visualization")
 def create_visualization():
-    # Setup canvas
-    combined_width = image1_pil.width + image2_pil.width
-    combined_height = max(image1_pil.height, image2_pil.height)
+    # Setup canvas - use resized images
+    combined_width = image1_resized_pil.width + image2_resized_pil.width
+    combined_height = max(image1_resized_pil.height, image2_resized_pil.height)
     combined_image = Image.new("RGBA", (combined_width, combined_height), (255, 255, 255, 255))
 
     # Convert images to RGBA with 60% opacity
-    image1_rgba = image1_pil.convert("RGBA")
-    image2_rgba = image2_pil.convert("RGBA")
+    image1_rgba = image1_resized_pil.convert("RGBA")
+    image2_rgba = image2_resized_pil.convert("RGBA")
 
     alpha1 = image1_rgba.split()[3]
     alpha1 = alpha1.point(lambda p: int(p * 0.6))
@@ -229,7 +322,7 @@ def create_visualization():
 
     # Paste images side by side
     combined_image.paste(image1_rgba, (0, 0), image1_rgba)
-    combined_image.paste(image2_rgba, (image1_pil.width, 0), image2_rgba)
+    combined_image.paste(image2_rgba, (image1_resized_pil.width, 0), image2_rgba)
 
     draw = ImageDraw.Draw(combined_image, "RGBA")
 
@@ -260,7 +353,7 @@ def create_visualization():
             coords, _, _ = get_coords2(patch_idx)
             x_min, y_min, x_max, y_max = coords
             draw.rectangle(
-                [x_min + image1_pil.width, y_min, x_max + image1_pil.width, y_max],
+                [x_min + image1_resized_pil.width, y_min, x_max + image1_resized_pil.width, y_max],
                 outline=(200, 200, 200, 100),
                 width=1
             )
@@ -280,20 +373,20 @@ def create_visualization():
             # Draw rectangles around patches
             draw.rectangle([x_min1, y_min1, x_max1, y_max1], outline=color, width=4)
             draw.rectangle(
-                [x_min2 + image1_pil.width, y_min2, x_max2 + image1_pil.width, y_max2],
+                [x_min2 + image1_resized_pil.width, y_min2, x_max2 + image1_resized_pil.width, y_max2],
                 outline=color,
                 width=4
             )
 
             # Connecting line
             draw.line(
-                [(cx1, cy1), (cx2 + image1_pil.width, cy2)],
+                [(cx1, cy1), (cx2 + image1_resized_pil.width, cy2)],
                 fill=color,
                 width=4
             )
 
     # Draw separator line
-    separator_x = image1_pil.width
+    separator_x = image1_resized_pil.width
     dash_length = 15
     dash_spacing = 10
     y = 0
@@ -312,7 +405,7 @@ combined_image = create_visualization()
 # ============================================================================
 # STEP 10: Save visualization
 # ============================================================================
-@log_step("9. Save visualization")
+@log_step("8. Save visualization")
 def save_visualization():
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, "patch_matching_comparison.jpg")
@@ -328,14 +421,13 @@ output_path = save_visualization()
 # ============================================================================
 # STEP 11: Create histogram of cosine similarity by patch index
 # ============================================================================
-@log_step("10. Create histogram of cosine similarity by patch index")
+@log_step("9. Create histogram of cosine similarity by patch index")
 def create_similarity_histogram():
     import matplotlib.pyplot as plt
 
     # Use the similarity_matrix from the two sample images
-    # Flatten similarity matrix and get indices
+    # Flatten similarity matrix
     similarity_flat = similarity_matrix.flatten()
-    patch_indices = np.arange(len(similarity_flat))
 
     # Create figure with histogram
     fig, ax = plt.subplots(figsize=(14, 6))
@@ -345,7 +437,7 @@ def create_similarity_histogram():
 
     ax.set_xlabel('Cosine Similarity', fontsize=12, fontweight='bold')
     ax.set_ylabel('Frequency', fontsize=12, fontweight='bold')
-    ax.set_title('Distribution of Cosine Similarity Across All Patch Pairs', fontsize=14, fontweight='bold')
+    ax.set_title('Distribution of Cosine Similarity Across All Patch Pairs (Recentered C-RADIOv4)', fontsize=14, fontweight='bold')
     ax.grid(True, alpha=0.3, linestyle='--')
 
     # Add statistics text box
@@ -382,7 +474,7 @@ histogram_path = create_similarity_histogram()
 # ============================================================================
 # STEP 12: Create merged scatter plot (top p, bottom p, random p)
 # ============================================================================
-@log_step("11. Create merged scatter plot of top/bottom/random p on single axis")
+@log_step("10. Create merged scatter plot of top/bottom/random p on single axis")
 def create_merged_scatter_plot():
     import matplotlib.pyplot as plt
 
@@ -423,7 +515,7 @@ def create_merged_scatter_plot():
 
     ax.set_xlabel('Flattened Patch Index', fontsize=12, fontweight='bold')
     ax.set_ylabel('Cosine Similarity', fontsize=12, fontweight='bold')
-    ax.set_title('Cosine Similarity: Top vs Bottom vs Random Samples', fontsize=14, fontweight='bold')
+    ax.set_title('Cosine Similarity: Top vs Bottom vs Random Samples (Recentered C-RADIOv4)', fontsize=14, fontweight='bold')
     ax.grid(True, alpha=0.3, linestyle='--')
     ax.legend(loc='upper right', fontsize=10, framealpha=0.9)
 
@@ -447,7 +539,7 @@ merged_scatter_path = create_merged_scatter_plot()
 # ============================================================================
 # STEP 13: Create merged plot showing cosine similarity vs y-axis patch position
 # ============================================================================
-@log_step("12. Create merged plot of cosine similarity vs y-axis patch position")
+@log_step("11. Create merged plot of cosine similarity vs y-axis patch position")
 def create_merged_plot_y_position():
     import matplotlib.pyplot as plt
 
@@ -457,7 +549,7 @@ def create_merged_plot_y_position():
     patch_indices = np.arange(len(similarity_flat))
 
     # Get patch coordinate functions for image1
-    get_coords1 = get_patch_coordinates(image1_pil, features1.shape[0])
+    get_coords1 = get_patch_coordinates(image1_resized_pil, features1.shape[0])
 
     # Prepare datasets for top p (99.9th percentile)
     p_top_percentile = 99.9
@@ -504,7 +596,7 @@ def create_merged_plot_y_position():
 
     ax.set_xlabel('Y-Axis Patch Position (pixels)', fontsize=12, fontweight='bold')
     ax.set_ylabel('Cosine Similarity', fontsize=12, fontweight='bold')
-    ax.set_title('Cosine Similarity vs Y-Axis Patch Position (Image 1)', fontsize=14, fontweight='bold')
+    ax.set_title('Cosine Similarity vs Y-Axis Patch Position (Image 1) (Recentered C-RADIOv4)', fontsize=14, fontweight='bold')
     ax.grid(True, alpha=0.3, linestyle='--')
     ax.legend(loc='upper right', fontsize=10, framealpha=0.9)
 
@@ -525,7 +617,7 @@ y_pos_path = create_merged_plot_y_position()
 # ============================================================================
 # STEP 14: Create merged plot showing cosine similarity vs x-axis patch position
 # ============================================================================
-@log_step("13. Create merged plot of cosine similarity vs x-axis patch position")
+@log_step("12. Create merged plot of cosine similarity vs x-axis patch position")
 def create_merged_plot_x_position():
     import matplotlib.pyplot as plt
 
@@ -535,7 +627,7 @@ def create_merged_plot_x_position():
     patch_indices = np.arange(len(similarity_flat))
 
     # Get patch coordinate functions for image1
-    get_coords1 = get_patch_coordinates(image1_pil, features1.shape[0])
+    get_coords1 = get_patch_coordinates(image1_resized_pil, features1.shape[0])
 
     # Prepare datasets for top p (99.9th percentile)
     p_top_percentile = 99.9
@@ -582,7 +674,7 @@ def create_merged_plot_x_position():
 
     ax.set_xlabel('X-Axis Patch Position (pixels)', fontsize=12, fontweight='bold')
     ax.set_ylabel('Cosine Similarity', fontsize=12, fontweight='bold')
-    ax.set_title('Cosine Similarity vs X-Axis Patch Position (Image 1)', fontsize=14, fontweight='bold')
+    ax.set_title('Cosine Similarity vs X-Axis Patch Position (Image 1) (Recentered C-RADIOv4)', fontsize=14, fontweight='bold')
     ax.grid(True, alpha=0.3, linestyle='--')
     ax.legend(loc='upper right', fontsize=10, framealpha=0.9)
 
