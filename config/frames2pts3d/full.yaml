@@ -1,0 +1,63 @@
+# Frames to 3D Points workflow configuration
+# Extract dense 3D points from video frames using DuneMast3r and sparse global alignment
+
+experiment:
+  name: "current_experiment"
+  group: "frames2pts3d"
+
+paths:
+  # Input paths
+  image_dir: "data/incoming/images"
+
+  # Output paths
+  output_base: "data/intermediates/frames2pts3d"
+  hydra_logs: "logs/hydra/frames2pts3d"
+
+  # Cache
+  cache_dir: "/tmp/cache"
+
+model:
+  # DuneMast3r model configuration
+  encoder_variant: "base"
+  resolution: 336
+
+images:
+  # Image loading configuration
+  file_pattern: "*.jpg"
+  resize_resolution: 336
+
+pairs:
+  # Image pair configuration
+  scene_graph: "complete"  # Options: "complete", "sequential", "overlapping"
+  symmetrize: true
+
+alignment:
+  # Sparse global alignment parameters
+  coarse_phase:
+    learning_rate: 0.07
+    iterations: 300
+    description: "Coarse phase alignment"
+
+  fine_phase:
+    learning_rate: 0.01
+    iterations: 300
+    description: "Fine phase alignment"
+
+visualization:
+  # Visualization parameters
+  enabled: true
+  image_idx: 0  # Which image to visualize
+  dpi: 150
+  confidence_threshold: 0.1
+  figure_size: [12, 9]
+  colormap: "viridis"
+  point_size: 1
+  alpha: 0.6
+
+output:
+  # Output saving configuration
+  save_poses: true
+  save_focals: true
+  save_point_clouds: true
+  save_visualization: true
+  save_config: true

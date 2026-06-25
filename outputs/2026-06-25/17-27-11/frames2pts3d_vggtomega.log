@@ -1,0 +1,100 @@
+[2026-06-25 17:27:11,684][__main__][INFO] - ================================================================================
+[2026-06-25 17:27:11,684][__main__][INFO] - CONFIGURATION
+[2026-06-25 17:27:11,684][__main__][INFO] - ================================================================================
+[2026-06-25 17:27:11,685][__main__][INFO] - experiment:
+  name: vggtomega_teensy
+  group: frames2pts3d_vggtomega
+paths:
+  image_dir: data/incoming/images_teensy
+  output_base: data/intermediates/frames2pts3d
+  hydra_logs: logs/hydra/frames2pts3d_vggtomega
+  cache_dir: /tmp/cache_vggtomega
+model:
+  checkpoint_path: data/models/vggt_omega_1b_512.pt
+  embedding_dim: 512
+images:
+  file_pattern: '*.jpg'
+  resize_resolution: 512
+pairs:
+  scene_graph: sequential
+  symmetrize: true
+alignment:
+  coarse_phase:
+    learning_rate: 0.07
+    iterations: 300
+    description: Coarse phase alignment with VGGT-Omega features
+  fine_phase:
+    learning_rate: 0.01
+    iterations: 300
+    description: Fine phase alignment with VGGT-Omega features
+visualization:
+  enabled: true
+  image_idx: 0
+  dpi: 150
+  confidence_threshold: 0.1
+  figure_size:
+  - 12
+  - 9
+  colormap: viridis
+  point_size: 1
+  alpha: 0.6
+output:
+  save_poses: true
+  save_focals: true
+  save_point_clouds: true
+  save_visualization: true
+  save_config: true
+
+[2026-06-25 17:27:11,685][__main__][INFO] - ================================================================================
+[2026-06-25 17:27:11,685][__main__][INFO] - Output directory: data/intermediates/frames2pts3d/vggtomega_teensy
+[2026-06-25 17:27:11,685][__main__][INFO] - [1/6] Loading VGGT-Omega encoder...
+[2026-06-25 17:27:11,696][__main__][INFO] - Using device: mps
+[2026-06-25 17:27:11,696][__main__][INFO] - Loading VGGT-Omega checkpoint from data/models/vggt_omega_1b_512.pt...
+[2026-06-25 17:27:14,063][__main__][INFO] - Loaded VGGT-Omega checkpoint with config: {'embedding_dim': 1024, 'num_tokens': 2}
+[2026-06-25 17:27:14,064][__main__][INFO] - ✓ Encoder loaded successfully
+[2026-06-25 17:27:14,064][__main__][INFO] - 
+[2/6] Loading images from data/incoming/images_teensy/...
+[2026-06-25 17:27:14,064][__main__][INFO] - Found 8 images
+[2026-06-25 17:27:14,084][__main__][INFO] -   ✓ Loaded frame_0001.jpg (1/8)
+[2026-06-25 17:27:14,101][__main__][INFO] -   ✓ Loaded frame_0002.jpg (2/8)
+[2026-06-25 17:27:14,119][__main__][INFO] -   ✓ Loaded frame_0003.jpg (3/8)
+[2026-06-25 17:27:14,136][__main__][INFO] -   ✓ Loaded frame_0004.jpg (4/8)
+[2026-06-25 17:27:14,153][__main__][INFO] -   ✓ Loaded frame_0005.jpg (5/8)
+[2026-06-25 17:27:14,170][__main__][INFO] -   ✓ Loaded frame_0006.jpg (6/8)
+[2026-06-25 17:27:14,188][__main__][INFO] -   ✓ Loaded frame_0007.jpg (7/8)
+[2026-06-25 17:27:14,204][__main__][INFO] -   ✓ Loaded frame_0008.jpg (8/8)
+[2026-06-25 17:27:14,204][__main__][INFO] - ✓ All 8 images loaded successfully
+[2026-06-25 17:27:14,204][__main__][INFO] - 
+[3/6] Extracting VGGT-Omega features...
+[2026-06-25 17:27:14,210][__main__][INFO] -   ✓ Extracted features for frame_0001.jpg (shape: torch.Size([1, 2, 1024]))
+[2026-06-25 17:27:14,212][__main__][INFO] -   ✓ Extracted features for frame_0002.jpg (shape: torch.Size([1, 2, 1024]))
+[2026-06-25 17:27:14,214][__main__][INFO] -   ✓ Extracted features for frame_0003.jpg (shape: torch.Size([1, 2, 1024]))
+[2026-06-25 17:27:14,216][__main__][INFO] -   ✓ Extracted features for frame_0004.jpg (shape: torch.Size([1, 2, 1024]))
+[2026-06-25 17:27:14,217][__main__][INFO] -   ✓ Extracted features for frame_0005.jpg (shape: torch.Size([1, 2, 1024]))
+[2026-06-25 17:27:14,219][__main__][INFO] -   ✓ Extracted features for frame_0006.jpg (shape: torch.Size([1, 2, 1024]))
+[2026-06-25 17:27:14,221][__main__][INFO] -   ✓ Extracted features for frame_0007.jpg (shape: torch.Size([1, 2, 1024]))
+[2026-06-25 17:27:14,223][__main__][INFO] -   ✓ Extracted features for frame_0008.jpg (shape: torch.Size([1, 2, 1024]))
+[2026-06-25 17:27:14,223][__main__][INFO] - ✓ Feature extraction complete
+[2026-06-25 17:27:14,223][__main__][INFO] - 
+[4/6] Building image pairs (sequential graph)...
+[2026-06-25 17:27:14,223][__main__][INFO] - ✓ Built 7 image pairs
+[2026-06-25 17:27:14,223][__main__][INFO] - 
+[5/6] Running sparse global alignment with VGGT-Omega features...
+[2026-06-25 17:27:14,223][__main__][INFO] -   Phase 1 (coarse): 300 iterations at lr=0.07
+[2026-06-25 17:27:14,223][__main__][INFO] -   Phase 2 (fine): 300 iterations at lr=0.01
+[2026-06-25 17:27:14,351][__main__][INFO] - ✓ Alignment complete
+[2026-06-25 17:27:14,351][__main__][INFO] - 
+[6a/6] Saving results...
+[2026-06-25 17:27:14,352][__main__][INFO] - ✓ Saved poses to data/intermediates/frames2pts3d/vggtomega_teensy/poses.npy
+[2026-06-25 17:27:14,352][__main__][INFO] - ✓ Saved focals to data/intermediates/frames2pts3d/vggtomega_teensy/focals.npy
+[2026-06-25 17:27:14,362][__main__][INFO] - ✓ Saved 8 point clouds to data/intermediates/frames2pts3d/vggtomega_teensy/pts3d
+[2026-06-25 17:27:14,362][__main__][INFO] - 
+[6b/6] Creating 3D visualization...
+[2026-06-25 17:27:14,555][__main__][INFO] - ✓ Filtered 262144 valid points from 262144 total points (confidence > 0.1)
+[2026-06-25 17:27:16,137][__main__][INFO] - ✓ Saved visualization to data/intermediates/frames2pts3d/vggtomega_teensy/visualization.png
+[2026-06-25 17:27:16,139][__main__][INFO] - ✓ Saved configuration to data/intermediates/frames2pts3d/vggtomega_teensy/config.yaml
+[2026-06-25 17:27:16,139][__main__][INFO] - 
+================================================================================
+[2026-06-25 17:27:16,139][__main__][INFO] - ✅ Processing complete!
+[2026-06-25 17:27:16,139][__main__][INFO] - ================================================================================
+[2026-06-25 17:27:16,139][__main__][INFO] - Results saved to: data/intermediates/frames2pts3d/vggtomega_teensy

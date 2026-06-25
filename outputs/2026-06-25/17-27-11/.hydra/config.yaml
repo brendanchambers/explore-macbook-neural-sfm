@@ -1,29 +1,29 @@
 experiment:
-  name: current_experiment
-  group: frames2pts3d
+  name: vggtomega_teensy
+  group: frames2pts3d_vggtomega
 paths:
   image_dir: data/incoming/images_teensy
   output_base: data/intermediates/frames2pts3d
-  hydra_logs: logs/hydra/frames2pts3d
-  cache_dir: /tmp/cache
+  hydra_logs: logs/hydra/frames2pts3d_vggtomega
+  cache_dir: /tmp/cache_vggtomega
 model:
-  encoder_variant: base
-  resolution: 336
+  checkpoint_path: data/models/vggt_omega_1b_512.pt
+  embedding_dim: 512
 images:
   file_pattern: '*.jpg'
-  resize_resolution: 336
+  resize_resolution: 512
 pairs:
-  scene_graph: complete
+  scene_graph: sequential
   symmetrize: true
 alignment:
   coarse_phase:
     learning_rate: 0.07
     iterations: 300
-    description: Coarse phase alignment
+    description: Coarse phase alignment with VGGT-Omega features
   fine_phase:
     learning_rate: 0.01
     iterations: 300
-    description: Fine phase alignment
+    description: Fine phase alignment with VGGT-Omega features
 visualization:
   enabled: true
   image_idx: 0

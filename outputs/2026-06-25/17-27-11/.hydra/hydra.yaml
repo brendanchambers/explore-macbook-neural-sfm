@@ -113,12 +113,12 @@ hydra:
     - hydra.mode=RUN
     task: []
   job:
-    name: frames2pts3d
+    name: frames2pts3d_vggtomega
     chdir: null
     override_dirname: ''
     id: ???
     num: ???
-    config_name: config
+    config_name: vggtomega
     env_set: {}
     env_copy: []
     config:
@@ -140,7 +140,7 @@ hydra:
     - path: ''
       schema: structured
       provider: schema
-    output_dir: /Users/bc/brendanchambers/explore-macbook-neural-sfm/outputs/2026-06-25/14-21-59
+    output_dir: /Users/bc/brendanchambers/explore-macbook-neural-sfm/outputs/2026-06-25/17-27-11
     choices:
       hydra/env: default
       hydra/callbacks: null

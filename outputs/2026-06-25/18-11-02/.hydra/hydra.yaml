@@ -111,14 +111,16 @@ hydra:
   overrides:
     hydra:
     - hydra.mode=RUN
-    task: []
+    task:
+    - paths.image_dir=data/incoming/images
+    - experiment.name=vggtomega_full
   job:
-    name: frames2pts3d
+    name: frames2pts3d_vggtomega
     chdir: null
-    override_dirname: ''
+    override_dirname: experiment.name=vggtomega_full,paths.image_dir=data/incoming/images
     id: ???
     num: ???
-    config_name: config
+    config_name: vggtomega_full
     env_set: {}
     env_copy: []
     config:
@@ -140,7 +142,7 @@ hydra:
     - path: ''
       schema: structured
       provider: schema
-    output_dir: /Users/bc/brendanchambers/explore-macbook-neural-sfm/outputs/2026-06-25/14-21-40
+    output_dir: /Users/bc/brendanchambers/explore-macbook-neural-sfm/outputs/2026-06-25/18-11-02
     choices:
       hydra/env: default
       hydra/callbacks: null

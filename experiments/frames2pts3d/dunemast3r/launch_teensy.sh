@@ -8,11 +8,11 @@
 # Configuration: config/frames2pts3d/config.yaml
 # Script: scripts/frames2pts3d.py
 # Input: data/incoming/images_teensy/
-# Output: data/intermediates/frames2pts3d/{experiment_name}/
+# Output: data/intermediates/frames2pts3d/
 #
 # Usage:
 #   ./experiments/frames2pts3d/launch_teensy.sh
-#   ./experiments/frames2pts3d/launch_teensy.sh my_experiment_name
+#   ./experiments/frames2pts3d/launch_teensy.sh experiment_name=my_experiment
 #
 
 set -e  # Exit on error
@@ -21,16 +21,11 @@ set -e  # Exit on error
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-# Experiment name (default to current_experiment, or use first argument)
-EXPERIMENT_NAME="${1:-current_experiment}"
-
 echo "=========================================="
 echo "frames2pts3d Workflow Launcher"
 echo "=========================================="
 echo "Project root: ${PROJECT_ROOT}"
-echo "Experiment name: ${EXPERIMENT_NAME}"
 echo "Input images: data/incoming/images_teensy/"
-echo "Output directory: data/intermediates/frames2pts3d/${EXPERIMENT_NAME}/"
 echo "Config: config/frames2pts3d/config.yaml"
 echo "=========================================="
 echo ""
@@ -43,11 +38,11 @@ echo "Starting frames2pts3d workflow..."
 echo ""
 
 uv run python scripts/frames2pts3d.py \
-  hydra.run.dir="logs/hydra/frames2pts3d/${EXPERIMENT_NAME}" \
-  experiment.name="${EXPERIMENT_NAME}"
+  --config-path="../config/frames2pts3d" \
+  --config-name="teensy" \
+  "$@"
 
 echo ""
 echo "=========================================="
 echo "✅ Workflow complete!"
-echo "Results saved to: data/intermediates/frames2pts3d/${EXPERIMENT_NAME}/"
 echo "=========================================="

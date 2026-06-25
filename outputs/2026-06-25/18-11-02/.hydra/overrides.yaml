@@ -1,0 +1,2 @@
+- paths.image_dir=data/incoming/images
+- experiment.name=vggtomega_full
