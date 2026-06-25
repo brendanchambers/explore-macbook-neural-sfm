@@ -1,0 +1,89 @@
+[2026-06-25 14:22:20,526][__main__][INFO] - ================================================================================
+[2026-06-25 14:22:20,526][__main__][INFO] - CONFIGURATION
+[2026-06-25 14:22:20,526][__main__][INFO] - ================================================================================
+[2026-06-25 14:22:20,526][__main__][INFO] - experiment:
+  name: test_run
+  group: frames2pts3d
+paths:
+  image_dir: data/incoming/images_teensy
+  output_base: data/intermediates/frames2pts3d
+  hydra_logs: logs/hydra/frames2pts3d
+  cache_dir: /tmp/cache
+model:
+  encoder_variant: base
+  resolution: 336
+images:
+  file_pattern: '*.jpg'
+  resize_resolution: 336
+pairs:
+  scene_graph: complete
+  symmetrize: true
+alignment:
+  coarse_phase:
+    learning_rate: 0.07
+    iterations: 300
+    description: Coarse phase alignment
+  fine_phase:
+    learning_rate: 0.01
+    iterations: 300
+    description: Fine phase alignment
+visualization:
+  enabled: true
+  image_idx: 0
+  dpi: 150
+  confidence_threshold: 0.1
+  figure_size:
+  - 12
+  - 9
+  colormap: viridis
+  point_size: 1
+  alpha: 0.6
+output:
+  save_poses: true
+  save_focals: true
+  save_point_clouds: true
+  save_visualization: true
+  save_config: true
+
+[2026-06-25 14:22:20,526][__main__][INFO] - ================================================================================
+[2026-06-25 14:22:20,527][__main__][INFO] - Output directory: data/intermediates/frames2pts3d/test_run
+[2026-06-25 14:22:20,527][__main__][INFO] - 
+[2/5] Loading images from data/incoming/images_teensy/...
+[2026-06-25 14:22:20,527][__main__][INFO] - Found 8 images
+[2026-06-25 14:22:20,543][__main__][INFO] -   ✓ Loaded frame_0001.jpg (1/8)
+[2026-06-25 14:22:20,558][__main__][INFO] -   ✓ Loaded frame_0002.jpg (2/8)
+[2026-06-25 14:22:20,573][__main__][INFO] -   ✓ Loaded frame_0003.jpg (3/8)
+[2026-06-25 14:22:20,587][__main__][INFO] -   ✓ Loaded frame_0004.jpg (4/8)
+[2026-06-25 14:22:20,602][__main__][INFO] -   ✓ Loaded frame_0005.jpg (5/8)
+[2026-06-25 14:22:20,617][__main__][INFO] -   ✓ Loaded frame_0006.jpg (6/8)
+[2026-06-25 14:22:20,631][__main__][INFO] -   ✓ Loaded frame_0007.jpg (7/8)
+[2026-06-25 14:22:20,646][__main__][INFO] -   ✓ Loaded frame_0008.jpg (8/8)
+[2026-06-25 14:22:20,646][__main__][INFO] - ✓ All 8 images loaded successfully
+[2026-06-25 14:22:20,646][__main__][INFO] - [1/5] Loading DuneMast3r model (variant=base, resolution=336)...
+[2026-06-25 14:22:20,832][__main__][INFO] - ✓ Model loaded successfully
+[2026-06-25 14:22:20,832][__main__][INFO] - 
+[3/5] Building image pairs (complete graph)...
+[2026-06-25 14:22:20,832][__main__][INFO] - ✓ Built 56 image pairs
+[2026-06-25 14:22:20,832][__main__][INFO] - 
+[4/5] Running sparse global alignment...
+[2026-06-25 14:22:20,833][__main__][INFO] -   Phase 1 (coarse): 300 iterations at lr=0.07
+[2026-06-25 14:22:20,833][__main__][INFO] -   Phase 2 (fine): 300 iterations at lr=0.01
+[2026-06-25 14:22:33,499][__main__][INFO] - ✓ Alignment complete
+[2026-06-25 14:22:33,499][__main__][INFO] - 
+[5/5] Extracting results...
+[2026-06-25 14:22:33,510][__main__][INFO] - ✓ Extracted poses shape: (8, 4, 4)
+[2026-06-25 14:22:33,510][__main__][INFO] - ✓ Extracted focals shape: (8,)
+[2026-06-25 14:22:33,510][__main__][INFO] - ✓ Extracted 8 point clouds (list format)
+[2026-06-25 14:22:33,513][__main__][INFO] - ✓ Saved poses to data/intermediates/frames2pts3d/test_run/poses.npy
+[2026-06-25 14:22:33,513][__main__][INFO] - ✓ Saved focals to data/intermediates/frames2pts3d/test_run/focals.npy
+[2026-06-25 14:22:33,526][__main__][INFO] - ✓ Saved 8 point clouds to data/intermediates/frames2pts3d/test_run/pts3d
+[2026-06-25 14:22:33,526][__main__][INFO] - 
+[6/6] Creating 3D visualization...
+[2026-06-25 14:22:33,689][__main__][INFO] - ✓ Filtered 30241 valid points from 56448 total points (confidence > 0.1)
+[2026-06-25 14:22:34,015][__main__][INFO] - ✓ Saved visualization to data/intermediates/frames2pts3d/test_run/visualization.png
+[2026-06-25 14:22:34,017][__main__][INFO] - ✓ Saved configuration to data/intermediates/frames2pts3d/test_run/config.yaml
+[2026-06-25 14:22:34,017][__main__][INFO] - 
+================================================================================
+[2026-06-25 14:22:34,017][__main__][INFO] - ✅ Processing complete!
+[2026-06-25 14:22:34,017][__main__][INFO] - ================================================================================
+[2026-06-25 14:22:34,017][__main__][INFO] - Results saved to: data/intermediates/frames2pts3d/test_run

@@ -43,9 +43,8 @@ echo "Starting frames2pts3d workflow..."
 echo ""
 
 uv run python scripts/frames2pts3d.py \
-  --config-path config/frames2pts3d \
-  --config-name config \
-  hydra.run.dir="logs/hydra/frames2pts3d/${EXPERIMENT_NAME}"
+  hydra.run.dir="logs/hydra/frames2pts3d/${EXPERIMENT_NAME}" \
+  experiment.name="${EXPERIMENT_NAME}"
 
 echo ""
 echo "=========================================="

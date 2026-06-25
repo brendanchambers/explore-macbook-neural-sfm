@@ -1,0 +1,43 @@
+experiment:
+  name: test_run
+  group: frames2pts3d
+paths:
+  image_dir: data/incoming/images_teensy
+  output_base: data/intermediates/frames2pts3d
+  hydra_logs: logs/hydra/frames2pts3d
+  cache_dir: /tmp/cache
+model:
+  encoder_variant: base
+  resolution: 336
+images:
+  file_pattern: '*.jpg'
+  resize_resolution: 336
+pairs:
+  scene_graph: complete
+  symmetrize: true
+alignment:
+  coarse_phase:
+    learning_rate: 0.07
+    iterations: 300
+    description: Coarse phase alignment
+  fine_phase:
+    learning_rate: 0.01
+    iterations: 300
+    description: Fine phase alignment
+visualization:
+  enabled: true
+  image_idx: 0
+  dpi: 150
+  confidence_threshold: 0.1
+  figure_size:
+  - 12
+  - 9
+  colormap: viridis
+  point_size: 1
+  alpha: 0.6
+output:
+  save_poses: true
+  save_focals: true
+  save_point_clouds: true
+  save_visualization: true
+  save_config: true
