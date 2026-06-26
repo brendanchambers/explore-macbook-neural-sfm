@@ -1,0 +1,22 @@
+WorldMirror 2.0 - Teensy Video Generation
+==========================================
+Timestamp: 2026-06-26T19:12:44Z
+Experiment: worldmirror2_teensy
+Group: current_experiment
+
+Configuration:
+  Scene Dir: data/intermediates/frames2pts3d/worldmirror2_teensy
+  Subsample: 1
+  Target Size: 518
+
+Outputs:
+  Cameras: data/intermediates/frames2pts3d/worldmirror2_teensy/worldmirror2/cameras.json
+  Depth Maps: data/intermediates/frames2pts3d/worldmirror2_teensy/worldmirror2/depth/
+  Pointmaps: data/intermediates/frames2pts3d/worldmirror2_teensy/worldmirror2/pointmap/
+  PLY File: data/intermediates/frames2pts3d/worldmirror2_teensy/worldmirror2/scene_pointmap.ply
+
+Pointcloud Statistics:
+  PLY File Size: 20472973 bytes
+  Status: ✓ Generated successfully
+
+End Time: 2026-06-26T19:12:44Z

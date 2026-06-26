@@ -1,0 +1,22 @@
+WorldMirror 2.0 - Full Movie Generation
+========================================
+Timestamp: 2026-06-26T19:52:49Z
+Experiment: worldmirror2
+Group: current_experiment
+
+Configuration:
+  Scene Dir: data/intermediates/frames2pts3d/worldmirror2
+  Subsample: 20
+  Target Size: 518
+
+Outputs:
+  Cameras: data/intermediates/frames2pts3d/worldmirror2/worldmirror2/cameras.json
+  Depth Maps: data/intermediates/frames2pts3d/worldmirror2/worldmirror2/depth/
+  Pointmaps: data/intermediates/frames2pts3d/worldmirror2/worldmirror2/pointmap/
+  PLY File: data/intermediates/frames2pts3d/worldmirror2/worldmirror2/scene_pointmap.ply
+
+Pointcloud Statistics:
+  PLY File Size: 17927998 bytes
+  Status: ✓ Generated successfully
+
+End Time: 2026-06-26T19:52:49Z
