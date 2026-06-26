@@ -60,7 +60,7 @@ echo "  Copied all $TOTAL_FRAMES frames to $SCENE_DIR/frames"
 
 # Create frames.json metadata
 export SCENE_DIR="$SCENE_DIR"
-python3 << 'PYMETA'
+uv run python << 'PYMETA'
 import json
 from pathlib import Path
 from PIL import Image
