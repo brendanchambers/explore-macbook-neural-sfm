@@ -104,7 +104,7 @@ echo "Step 1 Complete: WorldMirror 2.0 inference finished"
 echo ""
 
 # Step 2: Convert pointcloud to PLY
-echo "Step 2: Converting pointcloud to PLY..."
+echo "Step 2: Converting pointcloud to standard PLY..."
 PLY_FILE="$SCENE_DIR/worldmirror2/scene_pointmap.ply"
 echo "  Output: $PLY_FILE"
 echo "  Command: uv run python scripts/worldmirror2_to_ply.py $SCENE_DIR"
@@ -116,12 +116,26 @@ echo ""
 echo "Step 2 Complete: PLY conversion finished"
 echo ""
 
-# Step 3: Log results
+# Step 3: Convert pointcloud to Gaussian Splat format
+echo "Step 3: Converting pointcloud to Gaussian Splat format..."
+GS_PLY_FILE="$SCENE_DIR/worldmirror2/scene_gaussian_splat.ply"
+echo "  Output: $GS_PLY_FILE"
+echo "  Command: uv run python scripts/pointcloud_to_gaussian_splat.py $SCENE_DIR"
+echo ""
+
+uv run python scripts/pointcloud_to_gaussian_splat.py "$SCENE_DIR"
+
+echo ""
+echo "Step 3 Complete: Gaussian Splat conversion finished"
+echo ""
+
+# Step 4: Log results
 RESULTS_DIR="reports/experiments/$EXPERIMENT_GROUP"
 mkdir -p "$RESULTS_DIR"
 
 LOG_FILE="$RESULTS_DIR/worldmirror2.jsonl"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+GS_PLY_FILE="$SCENE_DIR/worldmirror2/scene_gaussian_splat.ply"
 
 # Create summary
 cat > "$RESULTS_DIR/worldmirror2_summary.txt" << EOF
@@ -140,15 +154,25 @@ Outputs:
   Cameras: $SCENE_DIR/worldmirror2/cameras.json
   Depth Maps: $SCENE_DIR/worldmirror2/depth/
   Pointmaps: $SCENE_DIR/worldmirror2/pointmap/
-  PLY File: $PLY_FILE
+  Standard PLY: $PLY_FILE
+  Gaussian Splat PLY: $GS_PLY_FILE
 
 Pointcloud Statistics:
 $(if [ -f "$PLY_FILE" ]; then
   BYTE_SIZE=$(stat -f%z "$PLY_FILE" 2>/dev/null || stat -c%s "$PLY_FILE" 2>/dev/null)
-  echo "  PLY File Size: $(numfmt --to=iec-i --suffix=B $BYTE_SIZE 2>/dev/null || echo "$BYTE_SIZE bytes")"
+  echo "  Standard PLY Size: $(numfmt --to=iec-i --suffix=B $BYTE_SIZE 2>/dev/null || echo "$BYTE_SIZE bytes")"
   echo "  Status: ✓ Generated successfully"
 else
-  echo "  Status: ✗ PLY file not found"
+  echo "  Status: ✗ Standard PLY file not found"
+fi)
+
+Gaussian Splat Statistics:
+$(if [ -f "$GS_PLY_FILE" ]; then
+  BYTE_SIZE=$(stat -f%z "$GS_PLY_FILE" 2>/dev/null || stat -c%s "$GS_PLY_FILE" 2>/dev/null)
+  echo "  Gaussian Splat PLY Size: $(numfmt --to=iec-i --suffix=B $BYTE_SIZE 2>/dev/null || echo "$BYTE_SIZE bytes")"
+  echo "  Status: ✓ Generated successfully"
+else
+  echo "  Status: ✗ Gaussian Splat PLY file not found"
 fi)
 
 End Time: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -160,10 +184,11 @@ echo "Pipeline Complete!"
 echo "=========================================="
 echo ""
 echo "Generated Files:"
-echo "  PLY Pointcloud: $PLY_FILE"
-echo "  Camera Poses:   $SCENE_DIR/worldmirror2/cameras.json"
-echo "  Depth Maps:     $SCENE_DIR/worldmirror2/depth/"
-echo "  Per-Frame 3D:   $SCENE_DIR/worldmirror2/pointmap/"
+echo "  Gaussian Splat:   $GS_PLY_FILE"
+echo "  Standard PLY:     $PLY_FILE"
+echo "  Camera Poses:     $SCENE_DIR/worldmirror2/cameras.json"
+echo "  Depth Maps:       $SCENE_DIR/worldmirror2/depth/"
+echo "  Per-Frame 3D:     $SCENE_DIR/worldmirror2/pointmap/"
 echo ""
 echo "Summary saved to: $RESULTS_DIR/worldmirror2_summary.txt"
 echo ""
